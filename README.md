@@ -4,7 +4,6 @@ compiladores
 Compiladores FPUNA
 
 Autor: Esteban Alberto Cáceres Díaz 
-CI: 5513416
 
 Para compilar: El desarrollo de éste analizador léxico se utilizó el lenguaje Java Version 8 y con el IDE Netbeans Version 8.2 RC.
 

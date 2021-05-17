@@ -56,6 +56,8 @@ public class JsonLexer {
                     for (String syntaxError : syntaxErrors) {
                         System.out.println(syntaxError);
                     }
+                }else{
+                    System.out.println("El fuente no posee errore sintacticos");
                 }
             }
         } catch (IOException e) {

@@ -8,6 +8,8 @@ package json.lexer;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -23,11 +25,16 @@ public class JsonLexer {
     static int lineNumber = 0;
     static String EOF = "eof";
     static int globalPosition = 0;
+    static int globaSyntaxlPosition = 0;
     static String output = "";
+    static List<ValidTokens> syntaxTokens = new ArrayList<>();
+    static List<SyntaxData> syntaxData = new ArrayList<>();
+    static List<String> syntaxErrors = new ArrayList<>();
+    static ValidTokens syntaxToken;
 
     public static void main(String[] args) {
         try {
-            File myObj = new File(args[0]);
+            File myObj = new File("C:\\Users\\ASUS\\Documents\\compiladores\\fuentes\\fuente.txt");
             try (Scanner myReader = new Scanner(myObj);
                     FileOutputStream outPutFile = new FileOutputStream("output.txt")) {
                 while (myReader.hasNextLine()) {
@@ -43,9 +50,16 @@ public class JsonLexer {
                     globalPosition = 0;
                 }
                 outPutFile.close();
+                syntaxToken = syntaxData.get(0).getToken();
+                element();
+                if(!syntaxErrors.isEmpty()){
+                    for (String syntaxError : syntaxErrors) {
+                        System.out.println(syntaxError);
+                    }
+                }
             }
         } catch (IOException e) {
-            System.out.println("An error occurred: "+ e.getMessage());
+            System.out.println("An error occurred: " + e.getMessage());
         }
     }
 
@@ -62,6 +76,8 @@ public class JsonLexer {
         while (globalPosition < lexemes.length) {
             ValidTokens token = getToken(lexemes, globalPosition);
             if (token != null) {
+                syntaxTokens.add(token);
+                syntaxData.add(new SyntaxData(token, lineNumber, globalPosition));
                 if (globalPosition != lexemes.length) {
                     tokenLine = tokenLine + token.toString() + " ";
                 } else {
@@ -212,7 +228,7 @@ public class JsonLexer {
             }
         }
         if (Pattern.matches(ValidTokens.LITERAL_NUM.getValue(), tokenToCompare.length() != 0 ? tokenToCompare : lexemes[position])) {
-            globalPosition = position;
+            globalPosition = position - 1;
             return true;
         }
         return false;
@@ -225,4 +241,176 @@ public class JsonLexer {
     private static boolean endOfLine(int position, String[] lexemes) {
         return position > lastIndexOfLine(lexemes);
     }
+
+    private static void attributeValue() {
+        switch (syntaxToken) {
+            case LITERAL_CADENA:
+                match(ValidTokens.LITERAL_CADENA);
+                break;
+            case LITERAL_NUM:
+                match(ValidTokens.LITERAL_NUM);
+                break;
+            case PR_TRUE:
+                match(ValidTokens.PR_TRUE);
+                break;
+            case PR_FALSE:
+                match(ValidTokens.PR_FALSE);
+                break;
+            case PR_NULL:
+                match(ValidTokens.PR_NULL);
+                break;
+            case L_CORCHETE:
+                match(ValidTokens.L_CORCHETE);
+                elementList();
+                match(ValidTokens.R_CORCHETE);
+                break;
+            case L_LLAVE:
+                match(ValidTokens.L_LLAVE);
+                attributeList();
+                match(ValidTokens.R_LLAVE);
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition,
+                        ValidTokens.LITERAL_CADENA
+                        +"|"+ValidTokens.LITERAL_NUM
+                        +"|"+ValidTokens.PR_TRUE
+                        +"|"+ValidTokens.PR_FALSE
+                        +"|"+ValidTokens.PR_NULL
+                        +"|"+ValidTokens.L_CORCHETE
+                        +"|"+ValidTokens.L_LLAVE);
+        }
+    }
+
+    private static void attributeName() {
+        switch (syntaxToken) {
+            case LITERAL_CADENA:
+                match(ValidTokens.LITERAL_CADENA);
+                break;
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition, ValidTokens.LITERAL_CADENA.toString());
+        }
+    }
+
+    private static void attribute() {
+        switch (syntaxToken) {
+            case LITERAL_CADENA:
+//                match(ValidTokens.LITERAL_CADENA);
+                attributeName();
+                match(ValidTokens.DOS_PUNTOS);
+                attributeValue();
+                break;
+        }
+    }
+
+    private static void attributeListPrime() {
+        switch (syntaxToken) {
+            case COMA:
+                match(ValidTokens.COMA);
+                attribute();
+                attributeListPrime();
+                break;
+        }
+    }
+
+    private static void attributeList() {
+        switch (syntaxToken) {
+            case LITERAL_CADENA:
+//                match(ValidTokens.LITERAL_CADENA);
+                attribute();
+                attributeListPrime();
+                break;
+        }
+    }
+
+    private static void object() {
+        switch (syntaxToken) {
+            case L_LLAVE:
+                match(ValidTokens.L_LLAVE);
+                attributeList();
+                match(ValidTokens.R_LLAVE);
+            //Todo caso cuando viene objeto vacio
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition, ValidTokens.L_LLAVE.toString());
+        }
+    }
+
+    private static void elementListPrime() {
+        switch (syntaxToken) {
+            case COMA:
+                match(ValidTokens.COMA);
+                element();
+                elementListPrime();
+                break;
+        }
+    }
+
+    private static void elementList() {
+        switch (syntaxToken) {
+            case L_LLAVE:
+                match(ValidTokens.L_LLAVE);
+                attributeName();
+                match(ValidTokens.DOS_PUNTOS);
+                attributeValue();
+                elementListPrime();
+                break;
+            case L_CORCHETE:
+                //todo
+                break;
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition, ValidTokens.L_LLAVE+"|"+ValidTokens.L_CORCHETE);
+        }
+    }
+
+    private static void array(ValidTokens token) {
+        switch (syntaxToken) {
+            case L_CORCHETE:
+                match(ValidTokens.L_CORCHETE);
+                elementList();
+                break;
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition, ValidTokens.L_CORCHETE.toString());
+        }
+    }
+
+    private static void element() {
+        switch (syntaxToken) {
+            case L_LLAVE:
+                match(ValidTokens.L_LLAVE);
+                attributeList();
+                match(ValidTokens.R_LLAVE);
+                break;
+            case L_CORCHETE:
+                match(ValidTokens.L_CORCHETE);
+                elementList();
+                match(ValidTokens.R_CORCHETE);
+                break;
+            default:
+                panicMode(syntaxData, globaSyntaxlPosition, ValidTokens.L_LLAVE+"|"+ValidTokens.L_CORCHETE);
+        }
+    }
+
+//    private static void json(ValidTokens token){
+//        case
+//    }
+    private static void match(ValidTokens expectedToken) {
+        if (syntaxToken.equals(expectedToken)) {
+            globaSyntaxlPosition = globaSyntaxlPosition + 1;
+            syntaxToken = syntaxData.get(globaSyntaxlPosition).getToken();
+        } else {
+            panicMode(syntaxData, globaSyntaxlPosition, expectedToken.toString());
+        }
+    }
+
+    private static void panicMode(List<SyntaxData> syntaxData, Integer globaSyntaxlPosition, String expectedToken) {
+        syntaxErrors.add("Error en la linea: " + syntaxData.get(globaSyntaxlPosition).getLine().toString()
+                + " en la columna: " + syntaxData.get(globaSyntaxlPosition).getColumn().toString()
+                + ", el token esperado es: " + expectedToken
+                + ", pero se recibió: " + syntaxData.get(globaSyntaxlPosition).getToken().toString());
+        for (int i = globaSyntaxlPosition; i < syntaxData.size(); i++) {
+            if(syntaxData.get(i).getToken().equals(ValidTokens.L_LLAVE) || syntaxData.get(i).getToken().equals(ValidTokens.L_CORCHETE)){
+                JsonLexer.globaSyntaxlPosition = i;
+                break;
+            }
+        }
+    }
+
 }

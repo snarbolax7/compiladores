@@ -3,9 +3,6 @@
       {  
          "ci":1234567,
          "casado":false,
-         "hijos":[  
-
-         ],
 		 "nombre":"Julio Pérez"
       },
       {  

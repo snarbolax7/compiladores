@@ -15,4 +15,6 @@ Se adjuntan un par de ejemplos de fuentes para la ejecución en la ubicación "c
 Salida: El resultado de la ejecución del "json.lexer.jar" deja como resultado un archivo llamado "output.txt" en la misma ubicación, este contiene los tokens.
 
 
+La respuesta el analisis sintactico queda demostrada en la terminal, si tiene errores los imprime, y si no, muestra un mensaje de exito.
+
  
